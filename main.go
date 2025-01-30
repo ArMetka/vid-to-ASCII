@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/sqweek/dialog"
 	"golang.org/x/term"
 	"image"
 	"image/png"
@@ -17,10 +18,9 @@ import (
 
 var ffmpeg string
 var pathToFile string
+var err error = nil
 
 /*
-*
-
 	 ./program
 		-ffmpeg path_to_ffmpeg
 		-video path_to_video
@@ -29,14 +29,23 @@ func main() {
 	fmt.Print("\033[H\033[2J") // Clear screen move to 0,0
 	fmt.Print("\033[s")        // Save cursor position
 
+	fmt.Println("Select a video file")
+
 	// Parse args
 	parse_args()
+	if pathToFile == "" {
+		pathToFile, err = dialog.File().Load()
+		if err != nil {
+			panic("Error while selecting file!\n")
+		}
+	}
 	//fmt.Println(ffmpeg)
 	//fmt.Println(pathToFile)
 
 	// Check if ffmpeg installed
 	if ffmpeg == "" {
-		_, err := exec.LookPath("ffmpeg")
+		_, err = exec.LookPath("ffmpeg")
+		ffmpeg = "ffmpeg"
 		if err != nil {
 			panic("ffmpeg not found in $PATH: https://www.ffmpeg.org/download.html\n")
 		}
@@ -64,7 +73,7 @@ func main() {
 		}
 
 		// Check if file exist
-		if _, err := os.Stat(pathToFile); errors.Is(err, os.ErrNotExist) {
+		if _, err = os.Stat(pathToFile); errors.Is(err, os.ErrNotExist) {
 			panic("File does not exist!\n")
 		}
 	}
@@ -85,7 +94,7 @@ func main() {
 		wakeUpTime := time.Now().Add(deltaTime)
 
 		// Read
-		imgPath := filepath.Join(filepath.Dir(pathToFile), "imgs", "out"+strconv.Itoa(i+1)+".png")
+		imgPath := filepath.Join("imgs", "out"+strconv.Itoa(i+1)+".png")
 		var img image.Image
 		readImage(&img, imgPath)
 
@@ -108,14 +117,12 @@ func main() {
 }
 
 func convertMp4ToImgSeq(frameCount *int, fps *int) error {
-	var err error = nil
-
 	// Create dir (or check if exist)
-	err = os.Mkdir(filepath.Join(filepath.Dir(pathToFile), "imgs"), os.ModePerm)
+	err = os.Mkdir("imgs", os.ModePerm)
 	if (err != nil) && (!errors.Is(err, os.ErrExist)) {
 		panic("Failed to create imgs directory!\n")
 	}
-	outFiles := filepath.Join(filepath.Dir(pathToFile), "imgs", "out%d.png")
+	outFiles := filepath.Join("imgs", "out%d.png")
 
 	// ffmpeg -i video.mp4 out%d.png
 	out, err := exec.Command(ffmpeg, "-i", pathToFile, outFiles).CombinedOutput()
