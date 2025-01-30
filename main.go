@@ -16,9 +16,9 @@ import (
 	"time"
 )
 
-const brightnessStr = "  `.-':_,^=;><+!rc*/z?sLTv)J7(|Fi{C}fI31tlu[neoZ5Yxjya]2ESwqkP6h9d4VpOGbUAKXHm8RD#$Bg0MNWQ%&@"
-const fps = 24
+const brightnessStr = " `.-':_,^=;><+!rc*/z?sLTv)J7(|Fi{C}fI31tlu[neoZ5Yxjya]2ESwqkP6h9d4VpOGbUAKXHm8RD#$Bg0MNWQ%&@"
 
+var fps int
 var ffmpeg string
 var pathToFile string
 var err error = nil
@@ -29,14 +29,19 @@ var err error = nil
 		-video path_to_video
 */
 func main() {
+	// Check if in terminal
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		panic("Not a terminal!\n")
+	}
+
 	fmt.Print("\033[H\033[2J") // Clear screen move to 0,0
 	fmt.Print("\033[s")        // Save cursor position
 
-	fmt.Println("Select a video file")
-
-	// Parse args
 	parseArgs()
+
+	// Get video
 	if pathToFile == "" {
+		fmt.Println("Select a video file")
 		pathToFile, err = dialog.File().Load()
 		if err != nil {
 			panic("Error while selecting file!\n")
@@ -59,15 +64,16 @@ func main() {
 		}
 	}
 
-	fmt.Println(ffmpeg)
-
+	fmt.Println("ffmpeg path: " + ffmpeg)
 	if ffmpeg == "" {
 		panic("ffmpeg not found in $PATH or at ./ffmpeg/bin/ffmpeg: https://www.ffmpeg.org/download.html\n")
 	}
 
-	// Check if in terminal
-	if !term.IsTerminal(int(os.Stdout.Fd())) {
-		panic("Not a terminal!\n")
+	// Get target fps
+	fmt.Print("Enter target fps (default=24): ")
+	scanned, err := fmt.Scanln(&fps)
+	if scanned != 1 {
+		fps = 24
 	}
 
 	// Get and print terminal dimensions
@@ -116,7 +122,11 @@ func main() {
 		convertAndPrint(&img, width, height)
 
 		// Print info in the bottom
-		printInfo(i, fps, width, height)
+		if i == frameCount-1 {
+			fmt.Print("frame=" + strconv.Itoa(i) + " Done! Press ENTER to exit")
+		} else {
+			printInfo(i, width, height)
+		}
 
 		// Resize every 0.5 sec
 		if i%(fps/2) == 0 {
@@ -127,7 +137,7 @@ func main() {
 		time.Sleep(time.Until(wakeUpTime))
 	}
 
-	time.Sleep(time.Second * 3)
+	fmt.Scanln()
 }
 
 func convertMp4ToImgSeq(frameCount *int) error {
@@ -222,7 +232,7 @@ func convertToAscii(brightness int) string {
 	return string(brightnessStr[index])
 }
 
-func printInfo(frame int, fps int, width int, height int) {
+func printInfo(frame int, width int, height int) {
 	sb := strings.Builder{}
 	sb.WriteString("frame=")
 	sb.WriteString(strconv.Itoa(frame))
