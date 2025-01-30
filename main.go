@@ -42,16 +42,27 @@ func main() {
 			panic("Error while selecting file!\n")
 		}
 	}
-	//fmt.Println(ffmpeg)
-	//fmt.Println(pathToFile)
+
+	// Default ffmpeg location
+	if ffmpeg == "" {
+		_, err = exec.LookPath("./ffmpeg/bin/ffmpeg")
+		if err == nil {
+			ffmpeg = "./ffmpeg/bin/ffmpeg"
+		}
+	}
 
 	// Check if ffmpeg installed
 	if ffmpeg == "" {
 		_, err = exec.LookPath("ffmpeg")
-		ffmpeg = "ffmpeg"
-		if err != nil {
-			panic("ffmpeg not found in $PATH: https://www.ffmpeg.org/download.html\n")
+		if err == nil {
+			ffmpeg = "ffmpeg"
 		}
+	}
+
+	fmt.Println(ffmpeg)
+
+	if ffmpeg == "" {
+		panic("ffmpeg not found in $PATH or at ./ffmpeg/bin/ffmpeg: https://www.ffmpeg.org/download.html\n")
 	}
 
 	// Check if in terminal
