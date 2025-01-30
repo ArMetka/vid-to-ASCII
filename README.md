@@ -1,6 +1,7 @@
 # Video to ASCII in Go
 
     Converts video to ASCII
+![](img/img1.png)
 
 ### Build
 
