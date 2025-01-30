@@ -16,6 +16,9 @@ import (
 	"time"
 )
 
+const brightnessStr = "  `.-':_,^=;><+!rc*/z?sLTv)J7(|Fi{C}fI31tlu[neoZ5Yxjya]2ESwqkP6h9d4VpOGbUAKXHm8RD#$Bg0MNWQ%&@"
+const fps = 24
+
 var ffmpeg string
 var pathToFile string
 var err error = nil
@@ -32,7 +35,7 @@ func main() {
 	fmt.Println("Select a video file")
 
 	// Parse args
-	parse_args()
+	parseArgs()
 	if pathToFile == "" {
 		pathToFile, err = dialog.File().Load()
 		if err != nil {
@@ -79,8 +82,8 @@ func main() {
 	}
 
 	// Convert video to image sequence
-	var frameCount, fps int
-	err = convertMp4ToImgSeq(&frameCount, &fps)
+	var frameCount int
+	err = convertMp4ToImgSeq(&frameCount)
 	if err != nil {
 		panic(err)
 	}
@@ -116,7 +119,7 @@ func main() {
 	time.Sleep(time.Second * 3)
 }
 
-func convertMp4ToImgSeq(frameCount *int, fps *int) error {
+func convertMp4ToImgSeq(frameCount *int) error {
 	// Create dir (or check if exist)
 	err = os.Mkdir("imgs", os.ModePerm)
 	if (err != nil) && (!errors.Is(err, os.ErrExist)) {
@@ -124,35 +127,27 @@ func convertMp4ToImgSeq(frameCount *int, fps *int) error {
 	}
 	outFiles := filepath.Join("imgs", "out%d.png")
 
-	// ffmpeg -i video.mp4 out%d.png
-	out, err := exec.Command(ffmpeg, "-i", pathToFile, outFiles).CombinedOutput()
-	if err != nil {
-		fmt.Print(out)
-	} else {
-		// Print fps
-		kbsIndex := strings.LastIndex(string(out), "kb/s, ")
-		outputFpsIndex := strings.LastIndex(string(out), "fps, ")
-		*fps, err = strconv.Atoi(string(out[kbsIndex+6 : outputFpsIndex-1]))
-		if err != nil {
-			panic("Failed to extract fps!\n")
-		}
-		fmt.Printf("ffmpeg: fps = %d\n", *fps)
+	fmt.Print("Processing...")
+	timeStart := time.Now()
 
-		// Print number of frames
+	// ffmpeg -i video.mp4 out%d.png
+	out, err := exec.Command(ffmpeg, "-i", pathToFile, "-vf", "fps="+strconv.Itoa(fps), outFiles).CombinedOutput()
+	if err != nil {
+		fmt.Print(string(out))
+	} else {
+		fmt.Print("\nDone.\n")
+
+		// Get number of frames
 		frameIndex := strings.LastIndex(string(out), "frame= ")
 		fpsIndex := strings.LastIndex(string(out), "fps=")
-		*frameCount, err = strconv.Atoi(string(out[frameIndex+7 : fpsIndex-1]))
+		*frameCount, err = strconv.Atoi(strings.TrimSpace(string(out[frameIndex+6 : fpsIndex])))
 		if err != nil {
 			panic("Failed to extract frame count!\n")
 		}
 		fmt.Printf("ffmpeg: frames = %d\n", *frameCount)
 
 		// Print conversion time
-		fmt.Print("ffmpeg: elapsed time = ")
-		for i := strings.LastIndex(string(out), "time=") + 5; string(out)[i] != ' '; i++ {
-			fmt.Print(string(out[i]))
-		}
-		fmt.Print("\n")
+		fmt.Printf("ffmpeg: elapsed time = %.0fs\n", time.Since(timeStart).Seconds())
 	}
 
 	return err
@@ -207,24 +202,13 @@ func convertAndPrint(img *image.Image, width int, height int) {
 }
 
 func convertToAscii(brightness int) string {
-	// sorted by brightness ->
-	//  `.-':_,^=;><+!rc*/z?sLTv)J7(|Fi{C}fI31tlu[neoZ5Yxjya]2ESwqkP6h9d4VpOGbUAKXHm8RD#$Bg0MNWQ%&@
-	switch {
-	case brightness < 35:
-		return " "
-	case brightness < 70:
-		return "="
-	case brightness < 105:
-		return "?"
-	case brightness < 140:
-		return "|"
-	case brightness < 175:
-		return "["
-	case brightness < 210:
-		return "#"
-	default:
-		return "@"
+	index := 0
+	if brightness >= 255 {
+		index = len(brightnessStr) - 1
+	} else if brightness > 0 {
+		index = int(float32(len(brightnessStr)) / 255.0 * float32(brightness))
 	}
+	return string(brightnessStr[index])
 }
 
 func printInfo(frame int, fps int, width int, height int) {
@@ -248,7 +232,7 @@ func printInfo(frame int, fps int, width int, height int) {
 	fmt.Print(s)
 }
 
-func parse_args() {
+func parseArgs() {
 	switch len(os.Args) {
 	case 1:
 		return
