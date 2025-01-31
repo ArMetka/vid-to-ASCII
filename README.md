@@ -3,20 +3,13 @@
     Converts video to ASCII
 ![](img/img1.png)
 
-### Build
+### Build && Run (Windows)
+
+> Requires ffmpeg binary in $PATH
 
 ```shell
 go mod tidy
-go build .
-```
-
-### Run
-
-> Requires ffmpeg binary in $PATH (or -ffmpeg path/to/bin/ffmpeg)
-
-```shell
-go mod tidy
-go run .
+go run -ldflags "-s -w" cmd/app/main.go cmd/app/init_windows.go
 ```
 
 ### Launch parameters
